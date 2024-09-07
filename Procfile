@@ -1,0 +1,1 @@
+worker: python point_table.py
