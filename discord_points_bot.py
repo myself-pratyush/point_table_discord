@@ -55,7 +55,7 @@ async def add_points(ctx, user: discord.Member, points: int):
     add_points_db(user.id, points)
     await ctx.send(f'{user.global_name} has been awarded {points} points!')
 
-@bot.command(name='leaderboard', aliases=['Leaderboard','Leader'])
+@bot.command(name='leaderboard', aliases=['Leaderboard','Leader','leader','leader_board','Leader_board'])
 async def leaderboard(ctx):
     leaderboard_data = get_leaderboard_db()
     
