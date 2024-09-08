@@ -1,1 +1,1 @@
-worker: python point_table.py
+worker: python discord_points_bot.py
