@@ -1,76 +1,73 @@
 import discord
 from discord.ext import commands
 import os
-import json
+import psycopg2
 
-# Define the intents your bot will use
+# Define intents
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-# Initialize the bot with intents and a command prefix
+# Initialize the bot with intents and command prefix
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Load or create a JSON file to store points
-POINTS_FILE = 'points.json'
+# Database connection setup
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-def load_points():
-    try:
-        with open(POINTS_FILE, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
+conn = psycopg2.connect(DATABASE_URL, sslmode="require")
+cur = conn.cursor()
 
-def save_points(points):
-    with open(POINTS_FILE, 'w') as f:
-        json.dump(points, f)
+# Create a table for points if it doesn't exist
+cur.execute("""
+CREATE TABLE IF NOT EXISTS points (
+    user_id BIGINT PRIMARY KEY,
+    points INTEGER
+);
+""")
+conn.commit()
 
-# Event triggered when the bot is ready and connected to Discord
+# Function to add points to a user
+def add_points_db(user_id, points):
+    cur.execute("""
+    INSERT INTO points (user_id, points)
+    VALUES (%s, %s)
+    ON CONFLICT (user_id)
+    DO UPDATE SET points = points.points + EXCLUDED.points;
+    """, (user_id, points))
+    conn.commit()
+
+# Function to get the leaderboard
+def get_leaderboard_db():
+    cur.execute("SELECT user_id, points FROM points ORDER BY points DESC")
+    return cur.fetchall()
+
+# Event triggered when the bot is ready
 @bot.event
 async def on_ready():
     print(f'We have logged in as {bot.user}')
 
-# A command to add points to a user (admin only)
+# Add points to a user (admin only)
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def add_points(ctx, user: discord.Member, points: int):
-    point_data = load_points()
-
-    # Add or update points for the user
-    if str(user.id) in point_data:
-        point_data[str(user.id)] += points
-    else:
-        point_data[str(user.id)] = points
-
-    save_points(point_data)
+    add_points_db(user.id, points)
     await ctx.send(f'{user.name} has been awarded {points} points!')
 
-# A command to show the leaderboard
+# Show the leaderboard
 @bot.command()
 async def leaderboard(ctx):
-    point_data = load_points()
-
-    # Sort users by points in descending order
-    sorted_users = sorted(point_data.items(), key=lambda x: x[1], reverse=True)
-
-    if not sorted_users:
+    leaderboard_data = get_leaderboard_db()
+    
+    if not leaderboard_data:
         await ctx.send("No points have been awarded yet.")
         return
 
-    # Create a leaderboard message
     leaderboard_message = "**Leaderboard:**\n"
-    for i, (user_id, points) in enumerate(sorted_users, start=1):
-        user = await bot.fetch_user(int(user_id))  # Fetch user by ID
+    for i, (user_id, points) in enumerate(leaderboard_data, start=1):
+        user = await bot.fetch_user(user_id)
         leaderboard_message += f"{i}. {user.name}: {points} points\n"
 
     await ctx.send(leaderboard_message)
 
-# A command to view points for a specific user
-@bot.command()
-async def points(ctx, user: discord.Member):
-    point_data = load_points()
-    user_points = point_data.get(str(user.id), 0)
-    await ctx.send(f'{user.name} has {user_points} points.')
-
-# Run the bot using the token from environment variables
+# Run the bot with the token from environment variables
 bot.run(os.getenv('DISCORD_TOKEN'))
