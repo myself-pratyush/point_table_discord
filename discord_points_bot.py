@@ -2,12 +2,6 @@ import discord
 from discord.ext import commands
 import os
 import psycopg2
-import logging
-from difflib import get_close_matches
-
-# setup logging
-logging.basicConfig(level=logging.WARNING)
-
 
 # Define the intents your bot will use
 intents = discord.Intents.default()
@@ -17,26 +11,8 @@ intents.members = True
 # Initialize the bot with intents and a command prefix
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Handle invalid commands
-@bot.event
-async def on_message(message):
-    if message.author == bot.user:
-        return
 
-    if message.content.startswith('!'):
-        command = message.content.split()[0][1:]  # Extract command
-        if command not in bot.commands:  # Check if command exists
-            logging.warning(f"Invalid command used: {command}")
-            close_matches = get_close_matches(command, bot.commands, n=1)
-            if close_matches:
-                suggested_command = close_matches[0]
-                await message.channel.send(f"Invalid command. Did you mean `!{suggested_command}`?")
-            else:
-                await message.channel.send("Invalid command. Please check your input.")
-    else:
-        await bot.process_commands(message)  # Ensure other commands are processed
 
-        
 # Connect to PostgreSQL database
 DATABASE_URL = os.getenv("DATABASE_URL")
 conn = psycopg2.connect(DATABASE_URL, sslmode="require")
