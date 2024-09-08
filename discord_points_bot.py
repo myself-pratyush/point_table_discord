@@ -20,4 +20,4 @@ async def ping(ctx):
     await ctx.send('Pong!')
 
 # Run the bot using the token from environment variables
-bot.run(os.getenv('1282019292631535616'))
+bot.run(os.getenv('DISCORD_TOKEN'))
