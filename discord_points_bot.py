@@ -43,7 +43,7 @@ async def add_points(ctx, user: discord.Member, points: int):
         point_data[str(user.id)] = points
 
     save_points(point_data)
-    await ctx.send(f'{user.name} has been awarded {points} points!')
+    await ctx.send(f'{user.global_name} has been awarded {points} points!')
 
 # A command to show the leaderboard
 @bot.command()
@@ -67,10 +67,12 @@ async def leaderboard(ctx):
 
 # A command to view points for a specific user
 @bot.command()
-async def points(ctx, user: discord.Member):
+async def points(ctx, user: discord.Member = None):
     point_data = load_points()
+    if user is None:
+        user = ctx.author
     user_points = point_data.get(str(user.id), 0)
-    await ctx.send(f'{user.name} has {user_points} points.')
+    await ctx.send(f'{user.global_name} has {user_points} points.')
 
 # Run the bot using the token from environment variables
 bot.run(os.getenv('DISCORD_TOKEN'))
